@@ -1,4 +1,4 @@
-<div class="col-2">
+<div class="col-2 bg-light">
     <div><a href="index.php">Anasayfa</a> </div>
     <div><a href="musteriler.php">Müşteriler</a></div> 
     <div><a href="calisanlar.php">Çalışanlar</a> </div>

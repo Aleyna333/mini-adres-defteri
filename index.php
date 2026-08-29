@@ -9,103 +9,34 @@ function bosMu($veri) {
     return empty(trim($veri));
 }
 
-if(isset($_POST["edit_id"]) && $_POST["edit_id"] != ""){
-    $name = $_POST["name"];
-    $surname = $_POST["surname"];
-    $phone = $_POST["phone"];
-    $email = $_POST["email"];
-    $edit_id = $_POST["edit_id"];
+$stmt = mysqli_prepare($baglanti, "SELECT COUNT(*) as toplam_musteri from musteriler ");
+     mysqli_stmt_execute($stmt); 
+     $sonuc = mysqli_stmt_get_result($stmt);
+     $toplam_musteri = mysqli_fetch_assoc($sonuc);
 
-    $stmt = mysqli_prepare($baglanti, "UPDATE musteriler SET
-    name = ?,
-    surname = ?, 
-    phone = ?, 
-    email = ?
-    WHERE id = ?");
+     $stmt = mysqli_prepare($baglanti, "SELECT COUNT(*) as toplam_calisan from calisanlar");
+     mysqli_stmt_execute($stmt);
+     $sonuc = mysqli_stmt_get_result($stmt);
+     $toplam_calisan = mysqli_fetch_assoc($sonuc);
 
-    mysqli_stmt_bind_param($stmt, "ssssi", $name, $surname, $phone, $email, $edit_id);
-    mysqli_stmt_execute($stmt);
+    $stmt = mysqli_prepare($baglanti, "SELECT COUNT(*) as toplam_hizmet from hizmetler");
+     mysqli_stmt_execute($stmt);
+     $sonuc = mysqli_stmt_get_result($stmt);
+     $toplam_hizmet = mysqli_fetch_assoc($sonuc);
 
-   header("Location:index.php");
-exit;
-}
-else if(isset($_POST["name"])) {
-    $name = $_POST["name"];
-    $surname = $_POST["surname"];
-    $phone = $_POST["phone"];
-    $email = $_POST["email"];
+     
+    $stmt = mysqli_prepare($baglanti, "SELECT COUNT(*)  as bugunku_randevu from randevular WHERE DATE(tarih) = DATE(NOW())");
+     mysqli_stmt_execute($stmt);
+     $sonuc = mysqli_stmt_get_result($stmt);
+     $bugunku_randevu = mysqli_fetch_assoc($sonuc);
 
-    if(
-        bosMu($name) ||
-        bosMu($surname) ||
-        bosMu($phone) || 
-        bosMu($email)
-    ) {
-        echo "Tüm alanlar doldurulmalı";
-    } else if (!is_numeric($phone) || strlen($phone) < 10 || strlen($phone) > 11 ) {
-        echo "Telefon sadece rakam içermeli ve 10-11 haneli olmalı";
-    }  else if(!filter_var($email, FILTER_VALIDATE_EMAIL)){
-        echo "Geçersiz mail";
-    }
-    else {
-
-    $stmt = mysqli_prepare($baglanti, "INSERT INTO musteriler (name, surname, phone, email) 
-    VALUES (?, ?, ?, ?)");
-
-    mysqli_stmt_bind_param($stmt, "ssss", $name, $surname, $phone, $email);
-    mysqli_stmt_execute($stmt);
-
-    header("Location:index.php");
-    exit;
-  }
-}
-
-
-if(isset($_GET["sil_id"])){
-    $sil_id = $_GET["sil_id"];
-
-    $stmt = mysqli_prepare($baglanti, "DELETE from musteriler where id = ?");
-
-    mysqli_stmt_bind_param($stmt, "i", $sil_id);
-    mysqli_stmt_execute($stmt);
-
-    header("Location:index.php");
-    exit;
-
-}
-
-if(isset($_GET["edit_id"])){
-    $edit_id = $_GET["edit_id"];
-
-    $stmt = mysqli_prepare($baglanti, "SELECT * from musteriler where id = ?");
-
-    mysqli_stmt_bind_param($stmt, "i", $edit_id);
-    mysqli_stmt_execute($stmt);
-    $sonuc = mysqli_stmt_get_result($stmt);
-    $editRow = mysqli_fetch_assoc($sonuc);
-}
-
-
-if(isset($_GET["arama"])){
-    $arama = $_GET["arama"];
-
-    $aramadegisken = "%" . "$arama" . "%";
-
-    $stmt = mysqli_prepare($baglanti, "SELECT * FROM musteriler WHERE name LIKE ? OR surname LIKE ?");
-
-    mysqli_stmt_bind_param($stmt, "ss", $aramadegisken, $aramadegisken);
-    mysqli_stmt_execute($stmt);
-    $sonuc = mysqli_stmt_get_result($stmt);
-
-}
- else 
-{
-    $arama = "";
-    $stmt = mysqli_prepare($baglanti, "SELECT * FROM musteriler ");
-    mysqli_stmt_execute($stmt);
-    $sonuc = mysqli_stmt_get_result($stmt);
-
-}
+     
+    $stmt = mysqli_prepare($baglanti, "SELECT musteriler.name as musteri_adi, calisanlar.name as calisan_adi, hizmetler.name as hizmet_adi, randevular.tarih as randevu_tarihi
+    FROM randevular JOIN musteriler ON randevular.musteri_id = musteriler.id 
+     JOIN calisanlar ON randevular.calisan_id = calisanlar.id JOIN hizmetler ON randevular.hizmet_id = hizmetler.id WHERE DATE(randevular.tarih) = DATE(NOW())");
+     mysqli_stmt_execute($stmt);
+     $sonuc = mysqli_stmt_get_result($stmt);
+     
 ?>
 
 <!DOCTYPE html>
@@ -113,86 +44,95 @@ if(isset($_GET["arama"])){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mini Adres Defteri</title>
+    <title>Salon Yönetim Sistemi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="row"> 
-<?php include "navbar.php"; ?>
 
-<div class="col-10">
-<form method="GET" class="d-flex mb-3">
-    <input type="text" name="arama" placeholder="Ara..." class="form-control me-2">
-    <button type="submit" class="btn btn-primary">Ara</button>
-</form>
 
-<button id="yeniBtn" class="btn btn-success mb-3">+ Yeni Kişi</button>
-<div id="modal" style="display: <?php if(isset($editRow)) {echo 'block'; } else {echo 'none'; } ?>; border:1px solid black; padding:20px; width:300px; background:white;">
+<div class="row g-3">
 
-<form method="post">
-    <input type="hidden" name="edit_id" value="<?php if(isset( $editRow)) {
-    echo guvenli($editRow["id"]);
-    }  else {echo "";} ?>">
-    <input type="text" class="form-control mb-2" name="name" value="<?php if(isset( $editRow)) {
-    echo guvenli($editRow["name"]);
-    }  else {echo "";} ?>" placeholder="Ad">
-    <input type="text" class="form-control mb-2" name="surname" value="<?php if(isset( $editRow)) {
-    echo guvenli($editRow["surname"]);
-    }  else {echo "";} ?>" placeholder="Soyad">
-    <input type="text" class="form-control mb-2" name="phone" value="<?php if(isset( $editRow)) {
-    echo guvenli($editRow["phone"]);
-    }  else {echo "";} ?>" placeholder="Telefon">
-    <input type="text" class="form-control mb-2" name="email" value="<?php if(isset( $editRow)) {
-    echo guvenli($editRow["email"]);
-    }  else {echo "";} ?>" placeholder="Mail">
+<div class="col-2"><?php include "navbar.php"; ?></div>
+
+<div class="col-10 p-3">
+<div class="row g-3">
+
+    <div class="col-7">
+        <div class="row">
+             <div class="col-6">
+    <div class="card">
+        <div class="card-body">
+            <h5>Toplam Müşteri</h5>
+            <p> <?php echo ($toplam_musteri["toplam_musteri"]);?></p>
+        </div>
+    </div>
+    </div>
+
+    <div class="col-6">
+    <div class="card">
+        <div class="card-body">
+            <h5>Toplam Çalışan</h5>
+            <p><?php echo($toplam_calisan["toplam_calisan"]); ?></p>
+        </div>
+    </div>
+    </div>
+
     
-    <button type="submit" class="btn btn-primary">Kaydet</button>
-    <button type="button" class="btn btn-secondary" id="kapatBtn">Kapat</button>
+<div class=" col-12 row g-3 mt-3">
+<div class="col-6">
+    <div class="card">
+        <div class="card-body">
+            <h5>Toplam Hizmet</h5>
+            <p><?php echo($toplam_hizmet["toplam_hizmet"]); ?></p>
+        </div>
+    </div>
+    </div>
 
-</form>
+    <div class="col-6">
+    <div class="card">
+        <div class="card-body">
+            <h5>Bugünkü Randevu</h5>
+            <p><?php echo($bugunku_randevu["bugunku_randevu"]); ?></p>
+        </div>
+    </div>
+    </div>
+        </div>
 
+    
 </div>
+    </div>
+
+        <div class="col-5">
+
+            <h5>Bugünkü Randevular</h5>
+
+            <?php  while($row = mysqli_fetch_assoc($sonuc)) {
+                ?>
+
+                <div class="row">
+                    <div class="col"> 
+                        <?php echo $row["musteri_adi"];?>
+                    </div>
+                    
+                        <div class="col"> 
+                        <?php echo $row["calisan_adi"];?>
+                    </div> 
+
+                        <div class="col"> 
+                        <?php echo $row["hizmet_adi"];?>
+                    </div> 
+
+                        <div class="col"> 
+                        <?php echo $row["randevu_tarihi"];?>
+                    </div> 
+                    
+                </div>
  
-
-<table class="table table-bordered table-hover">
-    <tr>
-        <th>Ad</th>
-        <th>Soyad</th>
-        <th>Telefon</th> 
-        <th>Mail</th>
-        <th>Düzenle</th>
-        <th>Sil</th>
-    </tr>
-
-
-<?php  
- while($row = mysqli_fetch_assoc($sonuc)) {
-    echo  "<tr>";
-    echo  "<td>".guvenli($row["name"])."</td>";
-    echo  "<td>".guvenli($row["surname"])."</td>";
-    echo  "<td>".guvenli($row["phone"])."</td>";
-    echo  "<td>".guvenli($row["email"])."</td>";
-    echo  "<td>";
-    echo '<form method="GET">';
-    echo '<input type="hidden" name="edit_id" value="' . guvenli($row['id']) . '">';
-    echo '<button type="submit" class = "btn btn-warning btn-sm">Düzenle</button>';
-    echo '</form>';
-    echo  "</td>";
-    echo  "<td>";
-    echo '<form method="GET">';
-    echo '<input type="hidden" name="sil_id" value="' . guvenli($row['id']) . '">';
-    echo '<button type="submit" class = "btn btn-danger btn-sm" onclick="return confirm(\'Silmek istediğinize emin misiniz?\')">Sil</button>';
-    echo '</form>';
-    echo  "</td>";
-    echo  "</tr>";
-}
-?>
-
-</table>
-
-<script src="script.js"></script>
-<div class="container mt-4">
-</div>
+            <?php
+            } ?>
+        </div>
+ 
+    </div>
 </div>
 </div>
 </body>
