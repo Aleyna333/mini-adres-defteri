@@ -106,6 +106,12 @@ $stmt = mysqli_prepare($baglanti, "SELECT COUNT(*) as toplam_musteri from muster
 
             <h5>Bugünkü Randevular</h5>
 
+            <?php   
+            if(mysqli_num_rows($sonuc)==0){
+                echo "Bugün için randevu yok";
+            }else
+            ?>
+
             <?php  while($row = mysqli_fetch_assoc($sonuc)) {
                 ?>
 
